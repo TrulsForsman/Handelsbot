@@ -12,9 +12,8 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 HOLDINGS_FILE = "holdings.json"
 
 # Tröskelvärde för courtage/växlingsavgift (i procentenheter momentum)
-# En ny aktie måste ha x% högre momentum än den befintliga för att motivera byte.
 SWEDISH_SWAP_THRESHOLD = 1.0  # 1.0% diff för svenska aktier
-NORDIC_SWAP_THRESHOLD = 1.5   # 1.5% diff för norska/danska aktier (pga 0.5% valutaväxling t/r)
+NORDIC_SWAP_THRESHOLD = 1.5   # 1.5% diff för norska/danska aktier (0.5% valutaväxling t/r)
 
 # Universum
 SWEDISH_STOCKS = [
@@ -40,7 +39,6 @@ def load_holdings():
                 return json.load(f)
         except Exception as e:
             print(f"Fel vid inläsning av {HOLDINGS_FILE}: {e}")
-    # Standardinställning vid start
     return {"cash_sek": 10000.0, "stock_positions": {}, "markets_position": None}
 
 def save_holdings(data):
@@ -49,7 +47,7 @@ def save_holdings(data):
 
 def send_telegram_message(text):
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
-        print("Fel: Telegram-nycklar saknas.")
+        print("Fel: Telegram-nycklar saknas i miljövariablerna.")
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": text, "parse_mode": "Markdown"}
@@ -61,18 +59,24 @@ def send_telegram_message(text):
         print(f"Telegram-fel: {e}")
 
 # ==========================================
-# 3. HÄMTA MARKNADSDATA & VALUTOR
+# 3. HÄMTA MARKNADSDATA & VALUTOR (RENSAD FRÅN NAN)
 # ==========================================
 state = load_holdings()
 all_tickers = ALL_STOCKS + [INDEX_TICKER] + CURRENCIES
-data = yf.download(all_tickers, period="1y")["Close"]
+
+# Hämta data och fyll i tidsluckor/helgdagar automatiskt
+raw_data = yf.download(all_tickers, period="1y")["Close"]
+data = raw_data.ffill().bfill()
 
 # Valutakurser för konvertering till SEK
-nok_sek = data["NOKSEK=X"].iloc[-1] if "NOKSEK=X" in data else 1.0
-dkk_sek = data["DKKSEK=X"].iloc[-1] if "DKKSEK=X" in data else 1.45
+nok_sek = data["NOKSEK=X"].dropna().iloc[-1] if "NOKSEK=X" in data else 1.0
+dkk_sek = data["DKKSEK=X"].dropna().iloc[-1] if "DKKSEK=X" in data else 1.45
 
 def get_price_in_sek(ticker):
-    price = data[ticker].iloc[-1]
+    price_series = data[ticker].dropna()
+    if price_series.empty:
+        return 0.0
+    price = price_series.iloc[-1]
     if ticker.endswith(".OL"):
         return price * nok_sek
     elif ticker.endswith(".CO"):
@@ -82,8 +86,8 @@ def get_price_in_sek(ticker):
 # ==========================================
 # 4. RÄKNA UT TOTALT PORTFÖLJVÄRDE
 # ==========================================
-stock_positions = state.get("stock_positions", {}) # format: {ticker: shares}
-markets_position = state.get("markets_position", None) # format: {"type": "MINI L OMX", "value_sek": 2250}
+stock_positions = state.get("stock_positions", {})
+markets_position = state.get("markets_position", None)
 cash_sek = state.get("cash_sek", 10000.0)
 
 # Värdera aktier i SEK
@@ -92,22 +96,23 @@ for ticker, shares in stock_positions.items():
     if ticker in data:
         stocks_value_sek += shares * get_price_in_sek(ticker)
 
-# Värdera Avanza Markets derivat (skattad utveckling utifrån OMXS30)
+# Värdera Avanza Markets derivat
 markets_value_sek = 0.0
 if markets_position:
     markets_value_sek = markets_position.get("value_sek", 0.0)
 
 total_portfolio_value = cash_sek + stocks_value_sek + markets_value_sek
 
-# Kapitalallokering
-stocks_allocation_total = total_portfolio_value * 0.775  # ~77.5% till aktier
-markets_allocation_total = total_portfolio_value * 0.225 # ~22.5% till Avanza Markets
-per_stock_target_sek = stocks_allocation_total / 4.0      # 4 aktiepositioner
+# Allokering (77.5% Aktier, 22.5% Derivat)
+stocks_allocation_total = total_portfolio_value * 0.775
+markets_allocation_total = total_portfolio_value * 0.225
+per_stock_target_sek = stocks_allocation_total / 4.0
 
 # ==========================================
 # 5. MODELL 1: NORDISK AKTIESTRATEGI (COURTAGEOPTIMERAD)
 # ==========================================
-omx = data[INDEX_TICKER]
+# Säkerställ ren dataserie för OMX utan tomma rader
+omx = data[INDEX_TICKER].dropna()
 omx_ma200 = omx.rolling(window=200).mean()
 market_is_bullish = omx.iloc[-1] > omx_ma200.iloc[-1]
 
@@ -118,13 +123,9 @@ current_stock_list = list(stock_positions.keys())
 final_stock_list = []
 
 if market_is_bullish:
-    # Sortera alla aktier efter momentum
     ranked_stocks = momentum.sort_values(ascending=False)
-    
-    # Välj ut toppkandidater med hänsyn till friktion/courtage
     candidates = list(ranked_stocks.index)
     
-    # Om vi redan har 4 innehav, tillämpa tröskelvärde för byte
     for candidate in candidates:
         if len(final_stock_list) >= 4:
             break
@@ -132,7 +133,6 @@ if market_is_bullish:
         if candidate in current_stock_list:
             final_stock_list.append(candidate)
         else:
-            # Kontrollera om kandidaten slår något av våra nuvarande innehav med tröskelvärdet
             should_add = True
             cand_score = ranked_stocks[candidate]
             threshold = NORDIC_SWAP_THRESHOLD if (candidate.endswith(".OL") or candidate.endswith(".CO")) else SWEDISH_SWAP_THRESHOLD
@@ -147,14 +147,13 @@ if market_is_bullish:
             if should_add or len(current_stock_list) < 4:
                 final_stock_list.append(candidate)
 
-    # Om listan inte är full (t.ex. vid kassa), fyll på med topprankade
     for candidate in candidates:
         if len(final_stock_list) >= 4:
             break
         if candidate not in final_stock_list:
             final_stock_list.append(candidate)
 else:
-    final_stock_list = [] # Vid Bear Market: Gå till 100% kassa för aktier
+    final_stock_list = []
 
 # ==========================================
 # 6. MODELL 2: AVANZA MARKETS DERIVAT (MINI FUTURES)
@@ -166,7 +165,6 @@ markets_signal = "KASSA"
 markets_target_val = 0.0
 
 if market_is_bullish and short_term_bullish:
-    # Säkerställ att ordern är på minst 1000 SEK för 0 kr courtage
     markets_target_val = max(1000.0, round(markets_allocation_total, -1))
     markets_signal = f"KÖP MINI L OMX AVA (Hävstång ~2x-4x) för ~{markets_target_val:.0f} kr"
 elif not market_is_bullish and not short_term_bullish:
@@ -212,12 +210,10 @@ msg += "ℹ️ *Courtageregel:* Order > 1 000 kr är helt courtagefria.\n"
 # ==========================================
 # 8. SPARA TILLSTÅND OCH SKICKA
 # ==========================================
-# Uppdatera sparad struktur
 new_stock_positions = {}
 for t in final_stock_list:
     price_sek = get_price_in_sek(t)
-    # Beräkna skattat antal aktier baserat på målbelopp
-    shares = round(per_stock_target_sek / price_sek)
+    shares = round(per_stock_target_sek / price_sek) if price_sek > 0 else 0
     new_stock_positions[t] = shares
 
 state["stock_positions"] = new_stock_positions
@@ -226,7 +222,6 @@ if "MINI" in markets_signal:
 else:
     state["markets_position"] = None
 
-# Återstående likviditet
 state["cash_sek"] = max(0.0, total_portfolio_value - (len(final_stock_list) * per_stock_target_sek) - markets_target_val)
 
 save_holdings(state)
