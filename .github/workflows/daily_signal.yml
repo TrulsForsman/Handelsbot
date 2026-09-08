@@ -3,7 +3,7 @@ name: Run Daily Trading Signal
 on:
   schedule:
     # Körs måndag-fredag kl 15:15 UTC (kl 17:15 svensk tid under sommartid)
-    - cron: '15 15 * * 1-5'
+    - cron: '00 15 * * 1-5'
   workflow_dispatch: # Tillåter manuell start från mobilen/GitHub-appen
 
 # Ge skriptet rättighet att spara ändringar i repot
