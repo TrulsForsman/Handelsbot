@@ -1,7 +1,8 @@
 {
     "cash_sek": 0.0,
-    "stock_positions": {
-    },
+    "stock_positions": {},
     "markets_position": {
+        "type": "KÖP MINI L OMX AVA (Hävstång ~2x-4x)",
+        "value_sek": 1000.0
     }
 }
