@@ -59,7 +59,7 @@ def send_telegram_message(text):
         print(f"Telegram-fel: {e}")
 
 # ==========================================
-# 3. HÄMTA MARKNADSDATA & VALUTOR (RENSAD FRÅN NAN)
+# 3. HÄMTA MARKNADSDATA & VALUTOR
 # ==========================================
 state = load_holdings()
 all_tickers = ALL_STOCKS + [INDEX_TICKER] + CURRENCIES
@@ -84,7 +84,7 @@ def get_price_in_sek(ticker):
     return price
 
 # ==========================================
-# 4. RÄKNA UT TOTALT PORTFÖLJVÄRDE
+# 4. RÄKNA UT TOTALT PORTFÖLJVÄRDE & BUDGET
 # ==========================================
 stock_positions = state.get("stock_positions", {})
 markets_position = state.get("markets_position", None)
@@ -109,14 +109,16 @@ markets_allocation_total = total_portfolio_value * 0.225
 per_stock_target_sek = stocks_allocation_total / 4.0
 
 # ==========================================
-# 5. MODELL 1: NORDISK AKTIESTRATEGI (COURTAGEOPTIMERAD)
+# 5. MODELL 1: NORDISK AKTIESTRATEGI (PRIS- & COURTAGEOPTIMERAD)
 # ==========================================
-# Säkerställ ren dataserie för OMX utan tomma rader
 omx = data[INDEX_TICKER].dropna()
 omx_ma200 = omx.rolling(window=200).mean()
 market_is_bullish = omx.iloc[-1] > omx_ma200.iloc[-1]
 
-stock_data = data[ALL_STOCKS]
+# Exkludera aktier där 1 enskild aktie kostar mer än budgeten per position
+affordable_stocks = [t for t in ALL_STOCKS if 0 < get_price_in_sek(t) <= per_stock_target_sek]
+
+stock_data = data[affordable_stocks]
 momentum = (stock_data.iloc[-1] / stock_data.iloc[-60] - 1) * 100
 
 current_stock_list = list(stock_positions.keys())
@@ -193,7 +195,10 @@ if market_is_bullish:
         msg += "🟢 *KÖP:* \n"
         for t in to_buy:
             score = momentum[t]
-            msg += f"• *{t}* (~{per_stock_target_sek:.0f} kr) | Mom: +{score:.1f}%\n"
+            price_sek = get_price_in_sek(t)
+            num_shares = int(per_stock_target_sek / price_sek) if price_sek > 0 else 0
+            est_cost = num_shares * price_sek
+            msg += f"• *{t}*: {num_shares} st (~{est_cost:.0f} kr) | Mom: +{score:.1f}%\n"
         msg += "\n"
     if to_hold:
         msg += "🔵 *BEHÅLL:* \n" + "\n".join([f"• {t}" for t in to_hold]) + "\n\n"
@@ -213,7 +218,7 @@ msg += "ℹ️ *Courtageregel:* Order > 1 000 kr är helt courtagefria.\n"
 new_stock_positions = {}
 for t in final_stock_list:
     price_sek = get_price_in_sek(t)
-    shares = round(per_stock_target_sek / price_sek) if price_sek > 0 else 0
+    shares = int(per_stock_target_sek / price_sek) if price_sek > 0 else 0
     new_stock_positions[t] = shares
 
 state["stock_positions"] = new_stock_positions
