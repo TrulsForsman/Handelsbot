@@ -1,13 +1,7 @@
 {
     "cash_sek": 0.0,
     "stock_positions": {
-        "MAERSK-B.CO": 0,
-        "EQNR.OL": 4,
-        "NIBE-B.ST": 35,
-        "EVO.ST": 2
     },
     "markets_position": {
-        "type": "KÖP MINI L OMX AVA (Hävstång ~2x-4x)",
-        "value_sek": 1790.0
     }
 }
