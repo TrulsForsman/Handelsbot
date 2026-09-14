@@ -1,10 +1,10 @@
 {
-    "cash_sek": 1768.0366239929954,
+    "cash_sek": 1578.6790998150555,
     "stock_positions": {
         "EQNR.OL": 3,
-        "NIBE-B.ST": 34,
         "EVO.ST": 1,
-        "AKRBP.OL": 4
+        "NIBE-B.ST": 31,
+        "AKRBP.OL": 3
     },
     "markets_position": null
 }
