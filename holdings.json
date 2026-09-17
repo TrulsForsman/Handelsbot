@@ -1,10 +1,13 @@
 {
-    "cash_sek": 1251.271676259399,
+    "cash_sek": 0.0,
     "stock_positions": {
-        "EQNR.OL": 2,
-        "EVO.ST": 1,
+        "EQNR.OL": 1,
+        "SAAB-B.ST": 1,
         "AKRBP.OL": 2,
-        "SAAB-B.ST": 1
+        "SEB-A.ST": 3
     },
-    "markets_position": null
+    "markets_position": {
+        "type": "KÖP MINI L OMX AVA (Hävstång ~2x-4x)",
+        "value_sek": 1000.0
+    }
 }
