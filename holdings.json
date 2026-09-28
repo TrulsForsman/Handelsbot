@@ -1,9 +1,9 @@
 {
     "cash_sek": 0.0,
     "stock_positions": {
+        "NIBE-B.ST": 11,
         "EQNR.OL": 1,
-        "NIBE-B.ST": 10,
-        "HEXA-B.ST": 4,
+        "HEXA-B.ST": 5,
         "AKRBP.OL": 1
     },
     "markets_position": {
