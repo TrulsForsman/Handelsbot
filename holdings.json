@@ -2,9 +2,9 @@
     "cash_sek": 0.0,
     "stock_positions": {
         "NIBE-B.ST": 11,
-        "EQNR.OL": 1,
         "HEXA-B.ST": 5,
-        "AKRBP.OL": 1
+        "EQNR.OL": 1,
+        "SEB-A.ST": 2
     },
     "markets_position": {
         "type": "KÖP MINI L OMX AVA (Hävstång ~2x-4x)",
