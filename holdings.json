@@ -1,10 +1,10 @@
 {
-    "cash_sek": 353.17563491821284,
+    "cash_sek": 324.64926593399036,
     "stock_positions": {
-        "HEXA-B.ST": 3,
+        "HEXA-B.ST": 2,
         "NIBE-B.ST": 6,
-        "SHB-A.ST": 2,
-        "ATCO-A.ST": 1
+        "SKF-B.ST": 1,
+        "SHB-A.ST": 1
     },
     "markets_position": null
 }
