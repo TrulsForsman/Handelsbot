@@ -1,9 +1,9 @@
 {
-    "cash_sek": 375.45595309508485,
+    "cash_sek": 366.854839068739,
     "stock_positions": {
+        "HEXA-B.ST": 2,
+        "ERIC-B.ST": 2,
         "NIBE-B.ST": 7,
-        "ERIC-B.ST": 3,
-        "HEXA-B.ST": 3,
         "TELIA.ST": 6
     },
     "markets_position": null
