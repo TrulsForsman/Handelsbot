@@ -2,8 +2,8 @@
     "cash_sek": 0.0,
     "stock_positions": {
         "TELIA.ST": 10,
-        "SHB-A.ST": 3,
         "SKA-B.ST": 1,
+        "SHB-A.ST": 3,
         "MOWI.OL": 2
     },
     "markets_position": {
