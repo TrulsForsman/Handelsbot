@@ -1,10 +1,10 @@
 {
-    "cash_sek": 619.1973005199998,
+    "cash_sek": 515.7105274751314,
     "stock_positions": {
-        "TELIA.ST": 10,
-        "MOWI.OL": 2,
+        "TELIA.ST": 9,
         "SKA-B.ST": 1,
-        "SWED-A.ST": 1
+        "SWED-A.ST": 1,
+        "MOWI.OL": 1
     },
     "markets_position": null
 }
